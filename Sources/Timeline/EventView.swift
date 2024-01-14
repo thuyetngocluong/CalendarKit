@@ -2,17 +2,32 @@ import UIKit
 
 open class EventView: UIView {
     public var descriptor: EventDescriptor?
-    public var color = SystemColors.label
-    
+        
     public var contentHeight: Double {
         textView.frame.height
     }
     
-    public private(set) lazy var textView: UITextView = {
-        let view = UITextView()
+    private
+    var containerContentView: UIStackView = {
+        let view = UIStackView()
+        view.axis = .horizontal
+        view.spacing = 0
+        view.clipsToBounds = true
+        view.layer.cornerRadius = 5
+        return view
+    }()
+    
+    private
+    var indicatorView = UIView()
+    private
+    var spacerView = UIView()
+    
+    public private(set) lazy var textView: UILabel = {
+        let view = UILabel()
         view.isUserInteractionEnabled = false
         view.backgroundColor = .clear
-        view.isScrollEnabled = false
+        view.adjustsFontSizeToFitWidth = true
+//        view.isScrollEnabled = false
         return view
     }()
     
@@ -32,8 +47,19 @@ open class EventView: UIView {
     
     private func configure() {
         clipsToBounds = false
-        color = tintColor
-        addSubview(textView)
+        addSubview(containerContentView)
+        containerContentView.addArrangedSubview(indicatorView)
+        containerContentView.addArrangedSubview(spacerView)
+        containerContentView.addArrangedSubview(textView)
+        let widthCT = indicatorView.widthAnchor.constraint(equalToConstant: 3)
+        widthCT.priority = .init(rawValue: 900)
+        widthCT.isActive = true
+        
+        spacerView.backgroundColor = .clear
+        let widthSpacerCT = spacerView.widthAnchor.constraint(equalToConstant: 3)
+        widthSpacerCT.priority = .init(rawValue: 901)
+        widthSpacerCT.isActive = true
+    
         
         for (idx, handle) in eventResizeHandles.enumerated() {
             handle.tag = idx
@@ -50,11 +76,11 @@ open class EventView: UIView {
             textView.font = event.font
         }
         if let lineBreakMode = event.lineBreakMode {
-            textView.textContainer.lineBreakMode = lineBreakMode
+            textView.lineBreakMode = lineBreakMode
         }
         descriptor = event
-        backgroundColor = event.backgroundColor
-        color = event.color
+        containerContentView.backgroundColor = event.backgroundColor
+        indicatorView.backgroundColor = event.color
         eventResizeHandles.forEach{
             $0.borderColor = event.color
             $0.isHidden = event.editedEvent == nil
@@ -95,31 +121,31 @@ open class EventView: UIView {
         return super.hitTest(point, with: event)
     }
     
-    override open func draw(_ rect: CGRect) {
-        super.draw(rect)
-        guard let context = UIGraphicsGetCurrentContext() else {
-            return
-        }
-        context.interpolationQuality = .none
-        context.saveGState()
-        context.setStrokeColor(color.cgColor)
-        context.setLineWidth(3)
-        context.translateBy(x: 0, y: 0.5)
-        let leftToRight = UIView.userInterfaceLayoutDirection(for: semanticContentAttribute) == .leftToRight
-        let x: Double = leftToRight ? 0 : frame.width - 1.0  // 1 is the line width
-        let y: Double = 0
-        context.beginPath()
-        context.move(to: CGPoint(x: x, y: y))
-        context.addLine(to: CGPoint(x: x, y: (bounds).height))
-        context.strokePath()
-        context.restoreGState()
-    }
+//    override open func draw(_ rect: CGRect) {
+//        super.draw(rect)
+//        guard let context = UIGraphicsGetCurrentContext() else {
+//            return
+//        }
+//        context.interpolationQuality = .none
+//        context.saveGState()
+//        context.setStrokeColor(color.cgColor)
+//        context.setLineWidth(3)
+//        context.translateBy(x: 0, y: 0.5)
+//        let leftToRight = UIView.userInterfaceLayoutDirection(for: semanticContentAttribute) == .leftToRight
+//        let x: Double = leftToRight ? 0 : frame.width - 1.0  // 1 is the line width
+//        let y: Double = 0
+//        context.beginPath()
+//        context.move(to: CGPoint(x: x, y: y))
+//        context.addLine(to: CGPoint(x: x, y: (bounds).height))
+//        context.strokePath()
+//        context.restoreGState()
+//    }
     
     private var drawsShadow = false
     
     override open func layoutSubviews() {
         super.layoutSubviews()
-        textView.frame = {
+        containerContentView.frame = {
             if UIView.userInterfaceLayoutDirection(for: semanticContentAttribute) == .rightToLeft {
                 return CGRect(x: bounds.minX, y: bounds.minY, width: bounds.width - 3, height: bounds.height)
             } else {
@@ -127,10 +153,10 @@ open class EventView: UIView {
             }
         }()
         if frame.minY < 0 {
-            var textFrame = textView.frame;
+            var textFrame = containerContentView.frame;
             textFrame.origin.y = frame.minY * -1;
             textFrame.size.height += frame.minY;
-            textView.frame = textFrame;
+            containerContentView.frame = textFrame;
         }
         let first = eventResizeHandles.first
         let last = eventResizeHandles.last
